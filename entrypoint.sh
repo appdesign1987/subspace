@@ -90,7 +90,7 @@ if ! test -d /data/wireguard ; then
     touch peers/null.conf # So you can cat *.conf safely
 
     # Generate public/private server keys.
-    wg genkey | tee server.private | wg pubkey > server.public
+    /usr/bin/wg genkey | tee server.private | /usr/bin/wg pubkey > server.public
 fi
 
 cat <<WGSERVER >/data/wireguard/server.conf
@@ -107,7 +107,7 @@ fi
 ip link add wg0 type wireguard
 export SUBSPACE_IPV4_CIDR=$(echo ${SUBSPACE_IPV4_POOL-} |cut -d '/' -f2)
 ip addr add ${SUBSPACE_IPV4_GW}/${SUBSPACE_IPV4_CIDR} dev wg0
-wg setconf wg0 /data/wireguard/server.conf
+/usr/bin/wg setconf wg0 /data/wireguard/server.conf
 ip link set wg0 up
 
 
