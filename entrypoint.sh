@@ -17,9 +17,7 @@ fi
 if [ -z "${SUBSPACE_IPV4_POOL-}" ] ; then
     export SUBSPACE_IPV4_POOL="10.99.97.0/24"
 fi
-if [ -z "${SUBSPACE_IPV6_POOL-}" ] ; then
-    export SUBSPACE_IPV6_POOL="fd00::10:97:0/112"
-fi
+
 if [ -z "${SUBSPACE_NAMESERVER-}" ] ; then
     export SUBSPACE_NAMESERVER="1.1.1.1"
 fi
@@ -47,14 +45,9 @@ if [ -z "${SUBSPACE_IPV4_GW-}" ] ; then
 	export SUBSPACE_IPV4_GW=$(echo ${SUBSPACE_IPV4_PREF-}1)
 
 fi
-if [ -z "${SUBSPACE_IPV6_GW-}" ] ; then
-        export SUBSPACE_IPV6_PREF=$(echo ${SUBSPACE_IPV6_POOL-} | cut -d '/' -f1 |sed 's/:0$/:/g' )
-	export SUBSPACE_IPV6_GW=$(echo ${SUBSPACE_IPV6_PREF-}1)
-fi
 
-if [ -z "${SUBSPACE_IPV6_NAT_ENABLED-}" ] ; then
-    export SUBSPACE_IPV6_NAT_ENABLED=1
-fi
+
+
 
 # Set DNS server
 echo "nameserver ${SUBSPACE_NAMESERVER}" >/etc/resolv.conf
@@ -73,20 +66,6 @@ if [ -n "${SUBSPACE_DISABLE_MASQUERADE-}" ] ; then
         /sbin/iptables --append FORWARD -s ${SUBSPACE_IPV4_POOL} -j ACCEPT
     fi
 
-    if [[ ${SUBSPACE_IPV6_NAT_ENABLED-} -gt 0 ]]; then
-    # ipv6
-        if ! /sbin/ip6tables -t nat --check POSTROUTING -s ${SUBSPACE_IPV6_POOL} -j MASQUERADE ; then
-            /sbin/ip6tables -t nat --append POSTROUTING -s ${SUBSPACE_IPV6_POOL} -j MASQUERADE
-        fi
-        
-        if ! /sbin/ip6tables --check FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT ; then
-            /sbin/ip6tables --append FORWARD -m state --state RELATED,ESTABLISHED -j ACCEPT
-        fi
-        
-        if ! /sbin/ip6tables --check FORWARD -s ${SUBSPACE_IPV6_POOL} -j ACCEPT ; then
-            /sbin/ip6tables --append FORWARD -s ${SUBSPACE_IPV6_POOL} -j ACCEPT
-        fi
-    fi
 fi
 
 # ipv4 - DNS Leak Protection
@@ -101,10 +80,6 @@ fi
 # ipv6 - DNS Leak Protection
 if ! /sbin/ip6tables --wait -t nat --check OUTPUT -s ${SUBSPACE_IPV6_POOL} -p udp --dport 53 -j DNAT --to ${SUBSPACE_IPV6_GW} ; then
     /sbin/ip6tables --wait -t nat --append OUTPUT -s ${SUBSPACE_IPV6_POOL} -p udp --dport 53 -j DNAT --to ${SUBSPACE_IPV6_GW}
-fi
-
-if ! /sbin/ip6tables --wait -t nat --check OUTPUT -s ${SUBSPACE_IPV6_POOL} -p tcp --dport 53 -j DNAT --to ${SUBSPACE_IPV6_GW} ; then
-    /sbin/ip6tables --wait -t nat --append OUTPUT -s ${SUBSPACE_IPV6_POOL} -p tcp --dport 53 -j DNAT --to ${SUBSPACE_IPV6_GW}
 fi
 
 #
@@ -137,8 +112,6 @@ fi
 ip link add wg0 type wireguard
 export SUBSPACE_IPV4_CIDR=$(echo ${SUBSPACE_IPV4_POOL-} |cut -d '/' -f2)
 ip addr add ${SUBSPACE_IPV4_GW}/${SUBSPACE_IPV4_CIDR} dev wg0
-export SUBSPACE_IPV6_CIDR=$(echo ${SUBSPACE_IPV6_POOL-} |cut -d '/' -f2)
-ip addr add ${SUBSPACE_IPV6_GW}/${SUBSPACE_IPV6_CIDR} dev wg0
 wg setconf wg0 /data/wireguard/server.conf
 ip link set wg0 up
 
